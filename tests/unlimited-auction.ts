@@ -292,4 +292,43 @@ describe('unlimited-auction', () => {
             console.log(error);
         }
     });
+
+    it('Cancel auction', async () => {
+        const sellerTokenAccount = getAssociatedTokenAddressSync(
+            mintKeyPair.publicKey,
+            payer.publicKey
+        );
+
+        const [pdaAccount, bump] = PublicKey.findProgramAddressSync(
+            [Buffer.from('sale'), mintKeyPair.publicKey.toBuffer()],
+            program.programId
+        );
+
+        const pdaTokenAccountAddress = getAssociatedTokenAddressSync(
+            mintKeyPair.publicKey,
+            pdaAccount,
+            true
+        );
+
+        try {
+            const transactionSignature = await program.methods
+                .cancelAuction()
+                .accounts({
+                    seller: payer.publicKey,
+                    sellerTokenAccount: sellerTokenAccount,
+                    pdaAccount: pdaAccount,
+                    pdaTokenAccount: pdaTokenAccountAddress,
+                    pdaSigner: pdaAccount,
+                    mint: mintKeyPair.publicKey,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .signers([])
+                .rpc({ skipPreflight: true });
+
+            console.log('Auction canceled');
+            console.log('Transaction signature', transactionSignature);
+        } catch (error) {
+            console.error('Failed to cancel auction:', error);
+        }
+    });
 });
