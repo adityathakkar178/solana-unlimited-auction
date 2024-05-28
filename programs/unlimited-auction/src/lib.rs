@@ -290,6 +290,23 @@ pub mod unlimited_auction {
         Ok(())
     }
 
+    pub fn withdraw_bid(ctx: Context<WithdrawBid>) -> Result<()> {
+        let auction = &mut ctx.accounts.pda_account;
+        let bidder = ctx.accounts.bidder.key();
+
+        let bid_index = auction
+            .bids
+            .iter()
+            .position(|bid| bid.bidder == bidder)
+            .ok_or(AuctionError::BidNotFound)?;
+
+        auction.bids.remove(bid_index);
+
+        msg!("Bid has been rejected");
+
+        Ok(())
+    }
+
     pub fn cancel_auction(ctx: Context<CancelAuction>) -> Result<()> {
         msg!("Canceling the auction");
 
@@ -522,7 +539,16 @@ pub struct AcceptBid<'info> {
 pub struct RejectBid<'info> {
     #[account(mut)]
     pub seller: Signer<'info>,
-    
+
+    #[account(mut)]
+    pub pda_account: Account<'info, Auction>,
+}
+
+#[derive(Accounts)]
+pub struct WithdrawBid<'info> {
+    #[account(mut)]
+    pub bidder: Signer<'info>,
+
     #[account(mut)]
     pub pda_account: Account<'info, Auction>,
 }

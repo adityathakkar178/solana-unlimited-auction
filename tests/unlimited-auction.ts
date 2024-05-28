@@ -316,6 +316,29 @@ describe('unlimited-auction', () => {
         }
     });
 
+    it('Withdraw bid', async () => {
+        const [pdaAccount, bump] = PublicKey.findProgramAddressSync(
+            [Buffer.from('sale'), mintKeyPair.publicKey.toBuffer()],
+            program.programId
+        );
+
+        try {
+            const transactionSignature = await program.methods
+                .withdrawBid()
+                .accounts({
+                    bidder: bidderKeypair.publicKey,
+                    pdaAccount: pdaAccount,
+                })
+                .signers([bidderKeypair])
+                .rpc({ skipPreflight: true });
+
+            console.log('Bid withdrawn');
+            console.log('Transaction signature', transactionSignature);
+        } catch (error) {
+            console.log(error);
+        }
+    });
+
     it('Cancel auction', async () => {
         const sellerTokenAccount = getAssociatedTokenAddressSync(
             mintKeyPair.publicKey,
