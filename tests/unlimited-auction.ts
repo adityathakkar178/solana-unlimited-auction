@@ -1,11 +1,15 @@
-import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
-import { UnlimitedAuction } from "../target/types/unlimited_auction";
-import { Keypair } from "@solana/web3.js";
-import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import * as anchor from '@coral-xyz/anchor';
+import { Program } from '@coral-xyz/anchor';
+import { UnlimitedAuction } from '../target/types/unlimited_auction';
+import { Keypair, PublicKey } from '@solana/web3.js';
+import {
+    TOKEN_PROGRAM_ID,
+    createAssociatedTokenAccountInstruction,
+    getAssociatedTokenAddressSync,
+} from '@solana/spl-token';
 
-describe("unlimited-auction", () => {
-  const provider = anchor.AnchorProvider.env();
+describe('unlimited-auction', () => {
+    const provider = anchor.AnchorProvider.env();
     anchor.setProvider(provider);
     const payer = provider.wallet as anchor.Wallet;
     const program = anchor.workspace.UnlimitedAuction;
@@ -89,6 +93,54 @@ describe("unlimited-auction", () => {
             .rpc({ skipPreflight: true });
 
         console.log('NFT minted');
+        console.log('Transaction signature', transactionSignature);
+    });
+
+    it('Start auction', async () => {
+        const sellerTokenAccount = getAssociatedTokenAddressSync(
+            mintKeyPair.publicKey,
+            payer.publicKey
+        );
+
+        const [pdaAccount, bump] = PublicKey.findProgramAddressSync(
+            [Buffer.from('sale'), mintKeyPair.publicKey.toBuffer()],
+            program.programId
+        );
+
+        const pdaTokenAccountAddress = getAssociatedTokenAddressSync(
+            mintKeyPair.publicKey,
+            pdaAccount,
+            true
+        );
+
+        const createPdaTokenAccountIx = createAssociatedTokenAccountInstruction(
+            payer.publicKey,
+            pdaTokenAccountAddress,
+            pdaAccount,
+            mintKeyPair.publicKey
+        );
+
+        const currentTimestamp = Math.floor(Date.now() / 1000);
+        startTime = currentTimestamp;
+
+        const startPrice = new anchor.BN(1000000000);
+
+        const transactionSignature = await program.methods
+            .startAuction(new anchor.BN(startTime), startPrice)
+            .accounts({
+                seller: payer.publicKey,
+                sellerTokenAccount: sellerTokenAccount,
+                pdaAccount,
+                pdaTokenAccount: pdaTokenAccountAddress,
+                mint: mintKeyPair.publicKey,
+                pdaSigner: pdaAccount,
+                tokenProgram: TOKEN_PROGRAM_ID,
+            })
+            .preInstructions([createPdaTokenAccountIx])
+            .signers([])
+            .rpc({ skipPreflight: true });
+
+        console.log('Auction started');
         console.log('Transaction signature', transactionSignature);
     });
 });
