@@ -522,6 +522,7 @@ pub struct AcceptBid<'info> {
 pub struct RejectBid<'info> {
     #[account(mut)]
     pub seller: Signer<'info>,
+    
     #[account(mut)]
     pub pda_account: Account<'info, Auction>,
 }
