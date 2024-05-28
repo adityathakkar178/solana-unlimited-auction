@@ -1,10 +1,17 @@
 import * as anchor from '@coral-xyz/anchor';
 import { Program } from '@coral-xyz/anchor';
 import { UnlimitedAuction } from '../target/types/unlimited_auction';
-import { Keypair, PublicKey } from '@solana/web3.js';
+import {
+    Keypair,
+    PublicKey,
+    SystemProgram,
+    Transaction,
+    sendAndConfirmTransaction,
+} from '@solana/web3.js';
 import {
     TOKEN_PROGRAM_ID,
     createAssociatedTokenAccountInstruction,
+    getAccount,
     getAssociatedTokenAddressSync,
 } from '@solana/spl-token';
 
@@ -199,5 +206,90 @@ describe('unlimited-auction', () => {
 
         // const auctionState = await program.account.auction.fetch(pdaAccount);
         // console.log('Auction State:', auctionState);
+    });
+
+    it('Accept the bid', async () => {
+        const sellerTokenAccount = getAssociatedTokenAddressSync(
+            mintKeyPair.publicKey,
+            payer.publicKey
+        );
+
+        const [pdaAccount, bump] = PublicKey.findProgramAddressSync(
+            [Buffer.from('sale'), mintKeyPair.publicKey.toBuffer()],
+            program.programId
+        );
+
+        const pdaTokenAccountAddress = getAssociatedTokenAddressSync(
+            mintKeyPair.publicKey,
+            pdaAccount,
+            true
+        );
+
+        const selectedBidderTokenAccountAddress = getAssociatedTokenAddressSync(
+            mintKeyPair.publicKey,
+            bidder2Keypair.publicKey
+        );
+
+        const pdaTokenAccountInfo = await getAccount(
+            provider.connection,
+            pdaTokenAccountAddress
+        ).catch(async () => {
+            const createPdaTokenAccountIx =
+                createAssociatedTokenAccountInstruction(
+                    payer.publicKey,
+                    pdaTokenAccountAddress,
+                    pdaAccount,
+                    mintKeyPair.publicKey
+                );
+
+            const transaction = new Transaction().add(createPdaTokenAccountIx);
+            await sendAndConfirmTransaction(provider.connection, transaction, [
+                payer.payer,
+            ]);
+        });
+
+        const highestBidderTokenAccountInfo = await getAccount(
+            provider.connection,
+            selectedBidderTokenAccountAddress
+        ).catch(async () => {
+            const createHighestBidderTokenAccountIx =
+                createAssociatedTokenAccountInstruction(
+                    payer.publicKey,
+                    selectedBidderTokenAccountAddress,
+                    bidder2Keypair.publicKey,
+                    mintKeyPair.publicKey
+                );
+
+            const transaction = new Transaction().add(
+                createHighestBidderTokenAccountIx
+            );
+            await sendAndConfirmTransaction(provider.connection, transaction, [
+                payer.payer,
+            ]);
+        });
+
+        try {
+            const transactionSignature = await program.methods
+                .acceptBid(bidder2Keypair.publicKey)
+                .accounts({
+                    seller: payer.publicKey,
+                    winningBidder: bidder2Keypair.publicKey,
+                    pdaAccount: pdaAccount,
+                    pdaTokenAccount: pdaTokenAccountAddress,
+                    pdaSigner: pdaAccount,
+                    winningBidderTokenAccount:
+                        selectedBidderTokenAccountAddress,
+                    mint: mintKeyPair.publicKey,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                    systemProgram: SystemProgram.programId,
+                })
+                .signers([payer.payer, bidder2Keypair])
+                .rpc({ skipPreflight: true });
+
+            console.log('Auction ended');
+            console.log('Transaction signature', transactionSignature);
+        } catch (error) {
+            console.log(error);
+        }
     });
 });
