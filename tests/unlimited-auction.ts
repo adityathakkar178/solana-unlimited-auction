@@ -35,6 +35,15 @@ describe('unlimited-auction', () => {
     ]);
     const bidderKeypair = Keypair.fromSecretKey(bidderSecretKey);
 
+    const bidder2SecretKey = Uint8Array.from([
+        24, 61, 14, 75, 29, 10, 156, 194, 215, 174, 18, 241, 234, 122, 27, 57,
+        186, 255, 114, 166, 201, 67, 70, 89, 40, 15, 223, 90, 37, 153, 39, 67,
+        15, 144, 208, 182, 109, 93, 137, 191, 23, 156, 18, 191, 62, 213, 60,
+        210, 205, 110, 177, 37, 70, 135, 160, 41, 1, 177, 133, 182, 134, 143,
+        219, 182,
+    ]);
+    const bidder2Keypair = Keypair.fromSecretKey(bidder2SecretKey);
+
     let collectionMintKeyPair: Keypair;
     let mintKeyPair: Keypair;
     let startTime: number;
@@ -142,5 +151,53 @@ describe('unlimited-auction', () => {
 
         console.log('Auction started');
         console.log('Transaction signature', transactionSignature);
+    });
+
+    it('Place bid bidder 1', async () => {
+        const [pdaAccount] = PublicKey.findProgramAddressSync(
+            [Buffer.from('sale'), mintKeyPair.publicKey.toBuffer()],
+            program.programId
+        );
+
+        const bidAmount = new anchor.BN(2000000000);
+
+        const transactionSignature = await program.methods
+            .placeBid(bidAmount)
+            .accounts({
+                bidder: bidderKeypair.publicKey,
+                pdaAccount: pdaAccount,
+            })
+            .signers([bidderKeypair])
+            .rpc({ skipPreflight: true });
+
+        console.log('Bidder 1 has placed bid');
+        console.log('Transaction signature', transactionSignature);
+
+        // const auctionState = await program.account.auction.fetch(pdaAccount);
+        // console.log('Auction State:', auctionState);
+    });
+
+    it('Place bid bidder 2', async () => {
+        const [pdaAccount] = PublicKey.findProgramAddressSync(
+            [Buffer.from('sale'), mintKeyPair.publicKey.toBuffer()],
+            program.programId
+        );
+
+        const bidAmount = new anchor.BN(3000000000);
+
+        const transactionSignature = await program.methods
+            .placeBid(bidAmount)
+            .accounts({
+                bidder: bidder2Keypair.publicKey,
+                pdaAccount: pdaAccount,
+            })
+            .signers([bidder2Keypair])
+            .rpc({ skipPreflight: true });
+
+        console.log('Bidder 2 has placed bid');
+        console.log('Transaction signature', transactionSignature);
+
+        // const auctionState = await program.account.auction.fetch(pdaAccount);
+        // console.log('Auction State:', auctionState);
     });
 });

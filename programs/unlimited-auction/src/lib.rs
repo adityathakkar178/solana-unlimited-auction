@@ -208,6 +208,27 @@ pub mod unlimited_auction {
 
         Ok(())
     }
+
+    pub fn place_bid(ctx: Context<PlaceBid>, bid_amount: u64) -> Result<()> {
+        msg!("Bidding started");
+
+        let auction = &mut ctx.accounts.pda_account;
+        let current_time = Clock::get()?.unix_timestamp;
+
+        require!(
+            current_time >= auction.start_time,
+            AuctionError::AuctionNotStarted
+        );
+
+        auction.bids.push(Bid {
+            bidder: ctx.accounts.bidder.key(),
+            amount: bid_amount,
+        });
+
+        msg!("Bid has been placed");
+
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -310,6 +331,13 @@ pub struct Auction {
     pub seller: Pubkey,
     pub start_time: i64,
     pub starting_price: u64,
+    pub bids: Vec<Bid>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct Bid {
+    pub bidder: Pubkey,
+    pub amount: u64,
 }
 
 #[derive(Accounts)]
@@ -351,4 +379,25 @@ pub struct StartAuction<'info> {
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+pub struct PlaceBid<'info> {
+    #[account(mut)]
+    pub bidder: Signer<'info>,
+
+    #[account(mut)]
+    pub pda_account: Account<'info, Auction>,
+}
+
+#[error_code]
+pub enum AuctionError {
+    #[msg("Auction has not started yet.")]
+    AuctionNotStarted,
+    #[msg("Auction has already ended.")]
+    AuctionEnded,
+    #[msg("Auction has not ended yet.")]
+    AuctionNotEnded,
+    #[msg("Cannot cancel auction because bids have been placed.")]
+    BidsPlaced,
 }
