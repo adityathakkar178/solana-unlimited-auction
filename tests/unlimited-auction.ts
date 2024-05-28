@@ -248,7 +248,7 @@ describe('unlimited-auction', () => {
             ]);
         });
 
-        const highestBidderTokenAccountInfo = await getAccount(
+        const bidderTokenAccountInfo = await getAccount(
             provider.connection,
             selectedBidderTokenAccountAddress
         ).catch(async () => {
@@ -287,6 +287,29 @@ describe('unlimited-auction', () => {
                 .rpc({ skipPreflight: true });
 
             console.log('Auction ended');
+            console.log('Transaction signature', transactionSignature);
+        } catch (error) {
+            console.log(error);
+        }
+    });
+
+    it('Reject bid', async () => {
+        const [pdaAccount, bump] = PublicKey.findProgramAddressSync(
+            [Buffer.from('sale'), mintKeyPair.publicKey.toBuffer()],
+            program.programId
+        );
+
+        try {
+            const transactionSignature = await program.methods
+                .rejectBid(bidderKeypair.publicKey)
+                .accounts({
+                    seller: payer.publicKey,
+                    pdaAccount: pdaAccount,
+                })
+                .signers([payer.payer])
+                .rpc({ skipPreflight: true });
+
+            console.log('Bid rejected');
             console.log('Transaction signature', transactionSignature);
         } catch (error) {
             console.log(error);
