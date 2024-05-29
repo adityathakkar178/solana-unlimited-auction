@@ -204,6 +204,7 @@ pub mod unlimited_auction {
         pda_account.seller = ctx.accounts.seller.key();
         pda_account.starting_price = starting_price;
         pda_account.start_time = start_time;
+        pda_account.bump = ctx.bumps.pda_account;
 
         msg!("Auction has started");
 
@@ -444,6 +445,7 @@ pub struct Auction {
     pub start_time: i64,
     pub starting_price: u64,
     pub bids: Vec<Bid>,
+    pub bump: u8,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -463,7 +465,7 @@ pub struct StartAuction<'info> {
     #[account(
         init,
         payer = seller,
-        space = 8 + 32 + 32 + 32 + 8 + 8 + 32 + 32,
+        space = 8 + 32 + 32 + 32 + 8 + 8 + 32 + 32 + 1,
         seeds = [b"sale", mint.key().as_ref()],
         bump,
     )]
